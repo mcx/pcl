@@ -58,17 +58,13 @@ pcl::PCLPointCloud2::concatenate (pcl::PCLPointCloud2 &cloud1, const pcl::PCLPoi
   const auto size1 = cloud1.width * cloud1.height;
   const auto size2 = cloud2.width * cloud2.height;
   //if one input cloud has no points, but the other input does, just select the cloud with points
-  switch ((bool (size1) << 1) + bool (size2))
-  {
-    case 1:
-      cloud1 = cloud2;
-      PCL_FALLTHROUGH
-    case 0:
-    case 2:
-      cloud1.header.stamp = std::max (cloud1.header.stamp, cloud2.header.stamp);
-      return (true);
-    default:
-      break;
+  if ((size1 == 0) && (size2 != 0)) {
+    cloud1 = cloud2;
+  }
+
+  if ((size1 == 0) || (size2 == 0)) {
+    cloud1.header.stamp = std::max (cloud1.header.stamp, cloud2.header.stamp);
+    return true;
   }
 
   // Ideally this should be in PCLPointField class since this is global behavior
@@ -141,6 +137,7 @@ pcl::PCLPointCloud2::concatenate (pcl::PCLPointCloud2 &cloud1, const pcl::PCLPoi
   cloud1.is_dense = cloud1.is_dense && cloud2.is_dense;
   cloud1.height = 1;
   cloud1.width = size1 + size2;
+  cloud1.row_step = cloud1.width * cloud1.point_step; // changed width
 
   if (simple_layout)
   {
@@ -149,13 +146,13 @@ pcl::PCLPointCloud2::concatenate (pcl::PCLPointCloud2 &cloud1, const pcl::PCLPoi
   }
   const auto data1_size = cloud1.data.size ();
   cloud1.data.resize(data1_size + cloud2.data.size ());
-  for (uindex_t cp = 0; cp < size2; ++cp)
+  for (std::size_t cp = 0; cp < size2; ++cp)
   {
     for (const auto& field_data: valid_fields)
     {
       const auto& i = field_data.idx1;
       const auto& j = field_data.idx2;
-      const auto& size = field_data.size;
+      const std::size_t size = field_data.size;
       // Leave the data for the skip fields untouched in cloud1
       // Copy only the required data from cloud2 to the correct location for cloud1
       memcpy (reinterpret_cast<char*> (&cloud1.data[data1_size + cp * cloud1.point_step + cloud1.fields[i].offset]),

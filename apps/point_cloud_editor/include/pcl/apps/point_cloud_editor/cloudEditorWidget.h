@@ -49,7 +49,7 @@
 
 #include <pcl/memory.h>  // for pcl::shared_ptr
 
-#include <QGLWidget>
+#include <QOpenGLWidget>
 
 #include <functional>
 
@@ -57,7 +57,7 @@ class Selection;
 
 /// @brief class declaration for the widget for editing and viewing
 /// point clouds.
-class CloudEditorWidget : public QGLWidget
+class CloudEditorWidget : public QOpenGLWidget
 {
   Q_OBJECT
   public:
@@ -319,5 +319,9 @@ class CloudEditorWidget : public QGLWidget
     /// a dialog displaying the statistics of the cloud editor
     StatisticsDialog stat_dialog_;
 
+    /// the viewport, set by resizeGL
+    std::array<GLint, 4> viewport_;
 
+    /// the projection matrix, set by resizeGL
+    std::array<GLfloat, 16> projection_matrix_;
 };

@@ -111,21 +111,21 @@ CloudGenerator<PointT, GeneratorT>::setParametersForZ (const GeneratorParameters
 template <typename PointT, typename GeneratorT> const typename CloudGenerator<PointT, GeneratorT>::GeneratorParameters& 
 CloudGenerator<PointT, GeneratorT>::getParametersForX () const
 {
-  x_generator_.getParameters ();
+  return x_generator_.getParameters ();
 }
 
 
 template <typename PointT, typename GeneratorT> const typename CloudGenerator<PointT, GeneratorT>::GeneratorParameters& 
 CloudGenerator<PointT, GeneratorT>::getParametersForY () const
 {
-  y_generator_.getParameters ();
+  return y_generator_.getParameters ();
 }
 
 
 template <typename PointT, typename GeneratorT> const typename CloudGenerator<PointT, GeneratorT>::GeneratorParameters& 
 CloudGenerator<PointT, GeneratorT>::getParametersForZ () const
 {
-  z_generator_.getParameters ();
+  return z_generator_.getParameters ();
 }
 
 
@@ -230,14 +230,14 @@ CloudGenerator<pcl::PointXY, GeneratorT>::setParametersForY (const GeneratorPara
 template <typename GeneratorT> const typename CloudGenerator<pcl::PointXY, GeneratorT>::GeneratorParameters&
 CloudGenerator<pcl::PointXY, GeneratorT>::getParametersForX () const
 {
-  x_generator_.getParameters ();
+  return x_generator_.getParameters ();
 }
 
 
 template <typename GeneratorT> const typename CloudGenerator<pcl::PointXY, GeneratorT>::GeneratorParameters&
 CloudGenerator<pcl::PointXY, GeneratorT>::getParametersForY () const
 {
-  y_generator_.getParameters ();
+  return y_generator_.getParameters ();
 }
 
 
@@ -276,9 +276,7 @@ CloudGenerator<pcl::PointXY, GeneratorT>::fill (int width, int height, pcl::Poin
   if (!cloud.empty ())
     PCL_WARN ("[pcl::common::CloudGenerator] Cloud data will be erased with new data\n!");
 
-  cloud.width = width;
-  cloud.height = height;
-  cloud.resize (cloud.width * cloud.height);
+  cloud.resize (width, height);
   cloud.is_dense = true;
 
   for (auto &point : cloud)

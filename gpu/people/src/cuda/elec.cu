@@ -1,6 +1,6 @@
 #include "internal.h"
 
-#include <pcl/gpu/utils/texture_binder.hpp>
+#include <pcl/gpu/containers/impl/texture_binder.hpp>
 #include <pcl/gpu/utils/device/block.hpp>
 
 #include <cassert>
@@ -294,7 +294,7 @@ namespace pcl
             int old_label = old_labels[i][j];
             int new_label = new_labels[i][j];
 
-            //if there is a neigboring element with a smaller label, update the equivalence tree of the processed element
+            //if there is a neighboring element with a smaller label, update the equivalence tree of the processed element
 		    //(the tree is always flattened in this stage so there is no need to use findRoot to find the root)
             if (new_label < old_label)
             {

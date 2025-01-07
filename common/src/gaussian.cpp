@@ -36,6 +36,7 @@
  */
 
 #include <pcl/common/gaussian.h>
+#include <cassert>
 
 void 
 pcl::GaussianKernel::compute (float sigma, 
@@ -83,7 +84,7 @@ pcl::GaussianKernel::compute (float sigma,
   kernel.resize (kernel_width);
   derivative.resize (kernel_width);
   const float factor = 0.01f;
-  float max_gauss = 1.0f, max_deriv = float (sigma * std::exp (-0.5));
+  float max_gauss = 1.0f, max_deriv = static_cast<float>(sigma * std::exp (-0.5));
   int hw = kernel_width / 2;
 
   float sigma_sqr = 1.0f / (2.0f * sigma * sigma);
@@ -144,9 +145,7 @@ pcl::GaussianKernel::convolveRows (const pcl::PointCloud<float>& input,
   {
     if (output.height < input.height || output.width < input.width)
     {
-      output.width = input.width;
-      output.height = input.height;
-      output.resize (input.height * input.width);
+      output.resize (static_cast<uindex_t>(input.width), static_cast<uindex_t>(input.height)); // Casting is necessary to resolve ambiguous call to resize
     }
     unaliased_input = &input;
   }
@@ -188,9 +187,7 @@ pcl::GaussianKernel::convolveCols (const pcl::PointCloud<float>& input,
   {
     if (output.height < input.height || output.width < input.width)
     {
-      output.width = input.width;
-      output.height = input.height;
-      output.resize (input.height * input.width);
+      output.resize (static_cast<uindex_t>(input.width), static_cast<uindex_t>(input.height)); // Casting is necessary to resolve ambiguous call to resize
     }
     unaliased_input = &input;
   }

@@ -41,6 +41,8 @@
 
 #include <pcl/features/flare.h>
 #include <pcl/common/geometry.h>
+#include <pcl/search/kdtree.h> // for KdTree
+#include <pcl/search/organized.h> // for OrganizedNeighbor
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 template<typename PointInT, typename PointNT, typename PointOutT, typename SignedDistanceT> bool
@@ -142,7 +144,7 @@ template<typename PointInT, typename PointNT, typename PointOutT, typename Signe
     //disambiguate Z axis with normal mean
     if (!pcl::flipNormalTowardsNormalsMean<PointNT> (*normals_, neighbours_indices, fitted_normal))
     {
-      //all normals in the neighbourood are invalid
+      //all normals in the neighbourhood are invalid
       //setting lrf to NaN
       lrf.setConstant (std::numeric_limits<float>::quiet_NaN ());
       return (std::numeric_limits<SignedDistanceT>::max ());

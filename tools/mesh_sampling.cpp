@@ -38,6 +38,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/visualization/vtk/pcl_vtk_compatibility.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
 #include <pcl/io/vtk_lib_io.h>
 #include <vtkVersion.h>
 #include <vtkOBJReader.h>
@@ -82,7 +83,7 @@ randPSurface (vtkPolyData * polydata, std::vector<double> * cumulativeAreas, dou
   float r = static_cast<float> (uniform_deviate (rand ()) * totalArea);
 
   auto low = std::lower_bound (cumulativeAreas->begin (), cumulativeAreas->end (), r);
-  vtkIdType el = vtkIdType (low - cumulativeAreas->begin ());
+  vtkIdType el = static_cast<vtkIdType>(low - cumulativeAreas->begin ());
 
   double A[3], B[3], C[3];
   vtkIdType npts = 0;
@@ -102,9 +103,9 @@ randPSurface (vtkPolyData * polydata, std::vector<double> * cumulativeAreas, dou
   }
   float r1 = static_cast<float> (uniform_deviate (rand ()));
   float r2 = static_cast<float> (uniform_deviate (rand ()));
-  randomPointTriangle (float (A[0]), float (A[1]), float (A[2]),
-                       float (B[0]), float (B[1]), float (B[2]),
-                       float (C[0]), float (C[1]), float (C[2]), r1, r2, p);
+  randomPointTriangle (static_cast<float>(A[0]), static_cast<float>(A[1]), static_cast<float>(A[2]),
+                       static_cast<float>(B[0]), static_cast<float>(B[1]), static_cast<float>(B[2]),
+                       static_cast<float>(C[0]), static_cast<float>(C[1]), static_cast<float>(C[2]), r1, r2, p);
 
   if (calcColor)
   {
@@ -116,9 +117,9 @@ randPSurface (vtkPolyData * polydata, std::vector<double> * cumulativeAreas, dou
       colors->GetTuple (ptIds[1], cB);
       colors->GetTuple (ptIds[2], cC);
 
-      randomPointTriangle (float (cA[0]), float (cA[1]), float (cA[2]),
-                           float (cB[0]), float (cB[1]), float (cB[2]),
-                           float (cC[0]), float (cC[1]), float (cC[2]), r1, r2, c);
+      randomPointTriangle (static_cast<float>(cA[0]), static_cast<float>(cA[1]), static_cast<float>(cA[2]),
+                           static_cast<float>(cB[0]), static_cast<float>(cB[1]), static_cast<float>(cB[2]),
+                           static_cast<float>(cC[0]), static_cast<float>(cC[1]), static_cast<float>(cC[2]), r1, r2, c);
     }
     else
     {
@@ -182,8 +183,8 @@ using namespace pcl;
 using namespace pcl::io;
 using namespace pcl::console;
 
-const int default_number_samples = 100000;
-const float default_leaf_size = 0.01f;
+constexpr int default_number_samples = 100000;
+constexpr float default_leaf_size = 0.01f;
 
 void
 printHelp (int, char **argv)
@@ -244,7 +245,7 @@ main (int argc, char **argv)
   if (ply_file_indices.size () == 1)
   {
     pcl::PolygonMesh mesh;
-    pcl::io::loadPolygonFilePLY (argv[ply_file_indices[0]], mesh);
+    pcl::io::loadPLYFile (argv[ply_file_indices[0]], mesh);
     pcl::io::mesh2vtk (mesh, polydata1);
   }
   else if (obj_file_indices.size () == 1)

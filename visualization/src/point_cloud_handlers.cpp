@@ -181,9 +181,10 @@ pcl::visualization::PointCloudColorHandlerRGBField<pcl::PCLPointCloud2>::getColo
   }
   if (j != 0)
     scalars->SetArray (colors, j, 0, vtkUnsignedCharArray::VTK_DATA_ARRAY_DELETE);
-  else
+  else {
     scalars->SetNumberOfTuples (0);
-  //delete [] colors;
+    delete [] colors;
+  }
   return scalars;
 }
 
@@ -418,10 +419,11 @@ pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2>::Poi
   field_name_ (field_name)
 {
   field_idx_  = pcl::getFieldIndex (*cloud, field_name);
-  if (field_idx_ != -1)
-    capable_ = true;
-  else
+  capable_ = field_idx_ != -1;
+  if (field_idx_ != -1 && cloud_->fields[field_idx_].datatype != pcl::PCLPointField::PointFieldTypes::FLOAT32) {
     capable_ = false;
+    PCL_ERROR("[pcl::PointCloudColorHandlerGenericField] This currently only works with float32 fields, but field %s has a different type.\n", field_name.c_str());
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -493,10 +495,7 @@ pcl::visualization::PointCloudColorHandlerRGBAField<pcl::PCLPointCloud2>::PointC
 {
   // Handle the 24-bit packed RGBA values
   field_idx_ = pcl::getFieldIndex (*cloud, "rgba");
-  if (field_idx_ != -1)
-    capable_ = true;
-  else
-    capable_ = false;
+  capable_ = field_idx_ != -1;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -565,9 +564,10 @@ pcl::visualization::PointCloudColorHandlerRGBAField<pcl::PCLPointCloud2>::getCol
   }
   if (j != 0)
     scalars->SetArray (colors, j, 0, vtkUnsignedCharArray::VTK_DATA_ARRAY_DELETE);
-  else
+  else {
     scalars->SetNumberOfTuples (0);
-  //delete [] colors;
+    delete [] colors;
+  }
   return scalars;
 }
 
@@ -577,11 +577,12 @@ pcl::visualization::PointCloudColorHandlerLabelField<pcl::PCLPointCloud2>::Point
 : pcl::visualization::PointCloudColorHandler<pcl::PCLPointCloud2>::PointCloudColorHandler (cloud)
 {
   field_idx_ = pcl::getFieldIndex (*cloud, "label");
-  if (field_idx_ != -1)
-    capable_ = true;
-  else
-    capable_ = false;
+  capable_ = field_idx_ != -1;
   static_mapping_ = static_mapping;
+  if (field_idx_ != -1 && cloud_->fields[field_idx_].datatype != pcl::PCLPointField::PointFieldTypes::UINT32) {
+    capable_ = false;
+    PCL_ERROR("[pcl::PointCloudColorHandlerLabelField] This currently only works with uint32 fields, but label field has a different type.\n");
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
@@ -670,9 +671,10 @@ pcl::visualization::PointCloudColorHandlerLabelField<pcl::PCLPointCloud2>::getCo
   }
   if (j != 0)
     scalars->SetArray (colors, j, 0, vtkUnsignedCharArray::VTK_DATA_ARRAY_DELETE);
-  else
+  else {
     scalars->SetNumberOfTuples (0);
-  //delete [] colors;
+    delete [] colors;
+  }
   return scalars;
 }
 

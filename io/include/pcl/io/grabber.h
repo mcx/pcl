@@ -262,6 +262,7 @@ namespace pcl
       operator std::unique_ptr<Base>() const { return std::make_unique<Signal>(); }
     };
     // TODO: remove later for C++17 features: structured bindings and try_emplace
+    std::string signame{typeid (T).name ()};
     #ifdef __cpp_structured_bindings
       const auto [iterator, success] =
     #else
@@ -275,7 +276,7 @@ namespace pcl
     #else
       signals_.emplace (
     #endif
-                         std::string (typeid (T).name ()), DefferedPtr ());
+            signame, DefferedPtr ());
     if (!success)
     {
       return nullptr;
@@ -299,7 +300,7 @@ namespace pcl
     boost::signals2::connection ret = signal->connect (callback);
 
     connections_[typeid (T).name ()].push_back (ret);
-    shared_connections_[typeid (T).name ()].push_back (boost::signals2::shared_connection_block (connections_[typeid (T).name ()].back (), false));
+    shared_connections_[typeid (T).name ()].emplace_back(connections_[typeid (T).name ()].back (), false);
     signalsChanged ();
     return (ret);
   }

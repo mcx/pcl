@@ -240,7 +240,7 @@ namespace pcl
     private:
 
       /** \brief Determines whether variable numbers of features are extracted or not. */
-      bool variable_feature_nr_;
+      bool variable_feature_nr_{false};
 
       /** \brief Stores a smoothed version of the input cloud. */
 	    pcl::PointCloud<pcl::RGB>::Ptr smoothed_input_;
@@ -249,15 +249,15 @@ namespace pcl
       FeatureSelectionMethod feature_selection_method_;
 
       /** \brief The threshold applied on the gradient magnitudes (for quantization). */
-      float gradient_magnitude_threshold_;
+      float gradient_magnitude_threshold_{10.0f};
       /** \brief The threshold applied on the gradient magnitudes for feature extraction. */
-      float gradient_magnitude_threshold_feature_extraction_;
+      float gradient_magnitude_threshold_feature_extraction_{55.0f};
 
       /** \brief The point cloud which holds the max-RGB gradients. */
       pcl::PointCloud<pcl::GradientXY> color_gradients_;
 
       /** \brief The spreading size. */
-      std::size_t spreading_size_;
+      std::size_t spreading_size_{8};
   
       /** \brief The map which holds the quantized max-RGB gradients. */
       pcl::QuantizedMap quantized_color_gradients_;
@@ -274,12 +274,8 @@ namespace pcl
 template <typename PointInT>
 pcl::ColorGradientModality<PointInT>::
 ColorGradientModality ()
-  : variable_feature_nr_ (false)
-  , smoothed_input_ (new pcl::PointCloud<pcl::RGB> ())
+  : smoothed_input_ (new pcl::PointCloud<pcl::RGB> ())
   , feature_selection_method_ (DISTANCE_MAGNITUDE_SCORE)
-  , gradient_magnitude_threshold_ (10.0f)
-  , gradient_magnitude_threshold_feature_extraction_ (55.0f)
-  , spreading_size_ (8)
 {
 }
 
@@ -294,8 +290,8 @@ pcl::ColorGradientModality<PointInT>::
 computeGaussianKernel (const std::size_t kernel_size, const float sigma, std::vector <float> & kernel_values)
 {
   // code taken from OpenCV
-  const int n = int (kernel_size);
-  const int SMALL_GAUSSIAN_SIZE = 7;
+  const int n = static_cast<int>(kernel_size);
+  constexpr int SMALL_GAUSSIAN_SIZE = 7;
   static const float small_gaussian_tab[][SMALL_GAUSSIAN_SIZE] =
   {
       {1.f},
@@ -310,7 +306,7 @@ computeGaussianKernel (const std::size_t kernel_size, const float sigma, std::ve
   //CV_Assert( ktype == CV_32F || ktype == CV_64F );
   /*Mat kernel(n, 1, ktype);*/
   kernel_values.resize (n);
-  float* cf = &(kernel_values[0]);
+  float* cf = kernel_values.data();
   //double* cd = (double*)kernel.data;
 
   double sigmaX = sigma > 0 ? sigma : ((n-1)*0.5 - 1)*0.3 + 0.8;
@@ -320,16 +316,16 @@ computeGaussianKernel (const std::size_t kernel_size, const float sigma, std::ve
   for( int i = 0; i < n; i++ )
   {
     double x = i - (n-1)*0.5;
-    double t = fixed_kernel ? double (fixed_kernel[i]) : std::exp (scale2X*x*x);
+    double t = fixed_kernel ? static_cast<double>(fixed_kernel[i]) : std::exp (scale2X*x*x);
 
-    cf[i] = float (t);
+    cf[i] = static_cast<float>(t);
     sum += cf[i];
   }
 
   sum = 1./sum;
   for ( int i = 0; i < n; i++ )
   {
-    cf[i] = float (cf[i]*sum);
+    cf[i] = static_cast<float>(cf[i]*sum);
   }
 }
 
@@ -340,7 +336,7 @@ pcl::ColorGradientModality<PointInT>::
 processInputData ()
 {
   // compute gaussian kernel values
-  const std::size_t kernel_size = 7;
+  constexpr std::size_t kernel_size = 7;
   std::vector<float> kernel_values;
   computeGaussianKernel (kernel_size, 0.0f, kernel_values);
 
@@ -372,7 +368,7 @@ processInputData ()
 
 	convolution.setInputCloud (rgb_input_);
 	convolution.setKernel (gaussian_kernel);
-
+  convolution.setBordersPolicy(pcl::filters::Convolution<pcl::RGB, pcl::RGB>::BORDERS_POLICY_DUPLICATE);
   convolution.convolve (*smoothed_input_);
 
   // extract color gradients
@@ -971,7 +967,7 @@ quantizeColorGradients ()
 
   quantized_color_gradients_.resize (width, height);
 
-  const float angleScale = 16.0f/360.0f;
+  constexpr float angleScale = 16.0f / 360.0f;
 
   //float min_angle = std::numeric_limits<float>::max ();
   //float max_angle = -std::numeric_limits<float>::max ();

@@ -46,11 +46,11 @@
 #include <pcl/io/openni2/openni2_device.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/common/pcl_filesystem.h>
 #include <pcl/common/time.h>
 #include <pcl/console/print.h>
 #include <pcl/exceptions.h>
 #include <iostream>
-#include <boost/filesystem.hpp> // for exists
 
 using namespace pcl::io::openni2;
 
@@ -73,24 +73,6 @@ namespace
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 pcl::io::OpenNI2Grabber::OpenNI2Grabber (const std::string& device_id, const Mode& depth_mode, const Mode& image_mode)
-  : color_resize_buffer_(0)
-  , depth_resize_buffer_(0)
-  , ir_resize_buffer_(0)
-  , image_width_ ()
-  , image_height_ ()
-  , depth_width_ ()
-  , depth_height_ ()
-  , image_required_ (false)
-  , depth_required_ (false)
-  , ir_required_ (false)
-  , sync_required_ (false)
-  , image_signal_ (), depth_image_signal_ (), ir_image_signal_ (), image_depth_image_signal_ ()
-  , ir_depth_image_signal_ (), point_cloud_signal_ (), point_cloud_i_signal_ ()
-  , point_cloud_rgb_signal_ (), point_cloud_rgba_signal_ ()
-  , depth_callback_handle_ (), image_callback_handle_ (), ir_callback_handle_ ()
-  , running_ (false)
-  , rgb_parameters_(std::numeric_limits<double>::quiet_NaN () )
-  , depth_parameters_(std::numeric_limits<double>::quiet_NaN () )
 {
   // initialize driver
   updateModeMaps (); // registering mapping from PCL enum modes to openni::VideoMode and vice versa
@@ -169,12 +151,9 @@ void
 pcl::io::OpenNI2Grabber::checkImageAndDepthSynchronizationRequired ()
 {
   // do we have anyone listening to images or color point clouds?
-  if (num_slots<sig_cb_openni_point_cloud_rgb>   () > 0 ||
+  sync_required_ = (num_slots<sig_cb_openni_point_cloud_rgb>   () > 0 ||
     num_slots<sig_cb_openni_point_cloud_rgba>  () > 0 ||
-    num_slots<sig_cb_openni_image_depth_image> () > 0)
-    sync_required_ = true;
-  else
-    sync_required_ = false;
+    num_slots<sig_cb_openni_image_depth_image> () > 0);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -182,13 +161,10 @@ void
 pcl::io::OpenNI2Grabber::checkImageStreamRequired ()
 {
   // do we have anyone listening to images or color point clouds?
-  if (num_slots<sig_cb_openni_image>             () > 0 ||
+  image_required_ = (num_slots<sig_cb_openni_image>             () > 0 ||
     num_slots<sig_cb_openni_image_depth_image> () > 0 ||
     num_slots<sig_cb_openni_point_cloud_rgba>  () > 0 ||
-    num_slots<sig_cb_openni_point_cloud_rgb>   () > 0)
-    image_required_ = true;
-  else
-    image_required_ = false;
+    num_slots<sig_cb_openni_point_cloud_rgb>   () > 0);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -196,28 +172,22 @@ void
 pcl::io::OpenNI2Grabber::checkDepthStreamRequired ()
 {
   // do we have anyone listening to depth images or (color) point clouds?
-  if (num_slots<sig_cb_openni_depth_image>       () > 0 ||
+  depth_required_ = (num_slots<sig_cb_openni_depth_image>       () > 0 ||
     num_slots<sig_cb_openni_image_depth_image> () > 0 ||
     num_slots<sig_cb_openni_ir_depth_image>    () > 0 ||
     num_slots<sig_cb_openni_point_cloud_rgb>   () > 0 ||
     num_slots<sig_cb_openni_point_cloud_rgba>  () > 0 ||
     num_slots<sig_cb_openni_point_cloud>       () > 0 ||
-    num_slots<sig_cb_openni_point_cloud_i>     () > 0 )
-    depth_required_ = true;
-  else
-    depth_required_ = false;
+    num_slots<sig_cb_openni_point_cloud_i>     () > 0 );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void
 pcl::io::OpenNI2Grabber::checkIRStreamRequired ()
 {
-  if (num_slots<sig_cb_openni_ir_image>       () > 0 ||
+  ir_required_ = (num_slots<sig_cb_openni_ir_image>       () > 0 ||
     num_slots<sig_cb_openni_point_cloud_i>  () > 0 ||
-    num_slots<sig_cb_openni_ir_depth_image> () > 0)
-    ir_required_ = true;
-  else
-    ir_required_ = false;
+    num_slots<sig_cb_openni_ir_depth_image> () > 0);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -310,7 +280,7 @@ pcl::io::OpenNI2Grabber::signalsChanged ()
 std::string
 pcl::io::OpenNI2Grabber::getName () const
 {
-  return (std::string ("OpenNI2Grabber"));
+  return {"OpenNI2Grabber"};
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -322,7 +292,7 @@ pcl::io::OpenNI2Grabber::setupDevice (const std::string& device_id, const Mode& 
 
   try
   {
-    if (boost::filesystem::exists (device_id))
+    if (pcl_fs::exists (device_id))
     {
       device_ = deviceManager->getFileDevice (device_id);	// Treat as file path
     }
@@ -533,8 +503,8 @@ pcl::io::OpenNI2Grabber::convertToXYZPointCloud (const DepthImage::Ptr& depth_im
 
   float constant_x = 1.0f / device_->getDepthFocalLength ();
   float constant_y = 1.0f / device_->getDepthFocalLength ();
-  float centerX = ((float)cloud->width - 1.f) / 2.f;
-  float centerY = ((float)cloud->height - 1.f) / 2.f;
+  float centerX = (static_cast<float>(cloud->width) - 1.f) / 2.f;
+  float centerY = (static_cast<float>(cloud->height) - 1.f) / 2.f;
 
   if (std::isfinite (depth_parameters_.focal_length_x))
     constant_x =  1.0f / static_cast<float> (depth_parameters_.focal_length_x);
@@ -613,8 +583,8 @@ pcl::io::OpenNI2Grabber::convertToXYZRGBPointCloud (const Image::Ptr &image, con
   // Generate default camera parameters
   float fx = device_->getDepthFocalLength (); // Horizontal focal length
   float fy = device_->getDepthFocalLength (); // Vertcal focal length
-  float cx = ((float)depth_width_ - 1.f) / 2.f;  // Center x
-  float cy = ((float)depth_height_- 1.f) / 2.f; // Center y
+  float cx = (static_cast<float>(depth_width_) - 1.f) / 2.f;  // Center x
+  float cy = (static_cast<float>(depth_height_)- 1.f) / 2.f; // Center y
 
   // Load pre-calibrated camera parameters if they exist
   if (std::isfinite (depth_parameters_.focal_length_x))
@@ -740,8 +710,8 @@ pcl::io::OpenNI2Grabber::convertToXYZIPointCloud (const IRImage::Ptr &ir_image, 
 
   float fx = device_->getDepthFocalLength (); // Horizontal focal length
   float fy = device_->getDepthFocalLength (); // Vertcal focal length
-  float cx = ((float)cloud->width - 1.f) / 2.f;  // Center x
-  float cy = ((float)cloud->height - 1.f) / 2.f; // Center y
+  float cx = (static_cast<float>(cloud->width) - 1.f) / 2.f;  // Center x
+  float cy = (static_cast<float>(cloud->height) - 1.f) / 2.f; // Center y
 
   // Load pre-calibrated camera parameters if they exist
   if (std::isfinite (depth_parameters_.focal_length_x))

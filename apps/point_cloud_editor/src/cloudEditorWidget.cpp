@@ -41,14 +41,15 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QApplication>
-#include <QDesktopWidget>
-#include <qgl.h>
 
 #include <pcl/pcl_config.h>
 
 #ifdef OPENGL_IS_A_FRAMEWORK
 # include <OpenGL/glu.h>
 #else
+# ifdef _WIN32
+#  include <windows.h>
+# endif // _WIN32
 # include <GL/glu.h>
 #endif
 
@@ -72,8 +73,7 @@
 #include <pcl/apps/point_cloud_editor/mainWindow.h>
 
 CloudEditorWidget::CloudEditorWidget (QWidget *parent)
-  : QGLWidget(QGLFormat(QGL::DoubleBuffer | QGL::DepthBuffer |
-                        QGL::Rgba | QGL::StencilBuffer), parent),
+  : QOpenGLWidget(parent),
     point_size_(2.0f), selected_point_size_(4.0f),
     cam_fov_(60.0), cam_aspect_(1.0), cam_near_(0.0001), cam_far_(100.0),
     color_scheme_(COLOR_BY_PURE), is_colored_(false)
@@ -116,7 +116,6 @@ CloudEditorWidget::load ()
                              tr("Can not load %1.").arg(file_path));
   }
   update();
-  updateGL();
 }
 
 void
@@ -205,7 +204,7 @@ CloudEditorWidget::select2D ()
   if (!cloud_ptr_)
     return;
   tool_ptr_ = std::shared_ptr<Select2DTool>(new Select2DTool(selection_ptr_,
-                                                               cloud_ptr_));
+                                                               cloud_ptr_, [this](GLint * viewport, GLfloat * projection_matrix){ std::copy_n(this->viewport_.begin(), 4, viewport); std::copy_n(this->projection_matrix_.begin(), 16, projection_matrix); }));
   update();
 }
 
@@ -476,11 +475,16 @@ CloudEditorWidget::paintGL ()
 void
 CloudEditorWidget::resizeGL (int width, int height)
 {
+  const auto ratio = this->devicePixelRatio();
+  width = static_cast<int>(width*ratio);
+  height = static_cast<int>(height*ratio);
   glViewport(0, 0, width, height);
+  viewport_ = {0, 0, width, height};
   cam_aspect_ = double(width) / double(height);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   gluPerspective(cam_fov_, cam_aspect_, cam_near_, cam_far_);
+  glGetFloatv(GL_PROJECTION_MATRIX, projection_matrix_.data());
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 }

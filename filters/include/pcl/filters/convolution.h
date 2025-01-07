@@ -48,7 +48,7 @@ namespace pcl
     /** Convolution is a mathematical operation on two functions f and g,
       * producing a third function that is typically viewed as a modified
       * version of one of the original functions.
-      * see http://en.wikipedia.org/wiki/Convolution.
+      * see https://en.wikipedia.org/wiki/Convolution.
       *
       * The class provides rows, column and separate convolving operations
       * of a point cloud.
@@ -213,12 +213,12 @@ namespace pcl
         /// convolution kernel
         Eigen::ArrayXf kernel_;
         /// half kernel size
-        int half_width_;
+        int half_width_{};
         /// kernel size - 1
-        int kernel_width_;
+        int kernel_width_{};
       protected:
         /** \brief The number of threads the scheduler should use. */
-        unsigned int threads_;
+        unsigned int threads_{1};
 
         void
         makeInfinite (PointOut& p)

@@ -25,7 +25,7 @@
 namespace pcl
 {
 
-//// note: Protcol named CoLaA (used by SICK) has some information.
+//// note: Protocol named CoLaA (used by SICK) has some information.
 ////       In this Grabber, only the amount_of_data is used, so other information is truncated.
 ////       Details of the protocol can be found at the following URL.
 
@@ -128,7 +128,7 @@ class PCL_EXPORTS TimGrabber : public Grabber
     std::vector<float> distances_;
 
     boost::asio::ip::tcp::endpoint tcp_endpoint_;
-    boost::asio::io_service tim_io_service_;
+    boost::asio::io_context tim_io_service_;
     boost::asio::ip::tcp::socket tim_socket_;
     //// wait time for receiving data (on the order of milliseconds)
     unsigned int wait_time_milliseconds_ = 0;

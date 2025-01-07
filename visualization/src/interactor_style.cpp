@@ -39,12 +39,14 @@
 #include <fstream>
 #include <list>
 #include <pcl/common/angles.h>
+#include <pcl/common/pcl_filesystem.h>
 #include <pcl/visualization/common/io.h>
 #include <pcl/visualization/interactor_style.h>
 #include <vtkVersion.h>
 #include <vtkLODActor.h>
 #include <vtkPolyData.h>
 #include <vtkPolyDataMapper.h>
+#include <vtkDataSetMapper.h>
 #include <vtkCellArray.h>
 #include <vtkTextProperty.h>
 #include <vtkAbstractPropPicker.h>
@@ -68,7 +70,6 @@
 
 #include <boost/algorithm/string/classification.hpp> // for is_any_of
 #include <boost/algorithm/string/split.hpp> // for split
-#include <boost/filesystem.hpp> // for exists
 
 #define ORIENT_MODE 0
 #define SELECT_MODE 1
@@ -224,7 +225,7 @@ pcl::visualization::PCLVisualizerInteractorStyle::setCameraParameters (const Eig
   Eigen::Vector3f pos_vec = extrinsics.block<3, 1> (0, 3);
 
   // Rotate the view vector
-  Eigen::Matrix3f rotation = extrinsics.block<3, 3> (0, 0);
+  Eigen::Matrix3f rotation = extrinsics.topLeftCorner<3, 3> ();
   Eigen::Vector3f y_axis (0.f, 1.f, 0.f);
   Eigen::Vector3f up_vec (rotation * y_axis);
 
@@ -609,7 +610,7 @@ pcl::visualization::PCLVisualizerInteractorStyle::OnKeyDown ()
     }
     else
     {
-      if (boost::filesystem::exists (camera_file_))
+      if (pcl_fs::exists (camera_file_))
       {
         if (loadCameraParameters (camera_file_))
         {
@@ -666,7 +667,7 @@ pcl::visualization::PCLVisualizerInteractorStyle::OnKeyDown ()
         data->SetPoints (points);
         data->SetVerts (vertices);
         // Modify the mapper
-        auto* mapper = dynamic_cast<vtkPolyDataMapper*>(act.actor->GetMapper ());
+        auto* mapper = dynamic_cast<vtkDataSetMapper*>(act.actor->GetMapper ());
         mapper->SetInputData (data);
         // Modify the actor
         act.actor->SetMapper (mapper);
@@ -696,7 +697,7 @@ pcl::visualization::PCLVisualizerInteractorStyle::OnKeyDown ()
         auto *data = dynamic_cast<vtkPolyData*>(act.actor->GetMapper ()->GetInput ());
         data->GetPointData ()->SetScalars (scalars);
         // Modify the mapper
-        auto* mapper = dynamic_cast<vtkPolyDataMapper*>(act.actor->GetMapper ());
+        auto* mapper = dynamic_cast<vtkDataSetMapper*>(act.actor->GetMapper ());
         mapper->SetScalarRange (minmax);
         mapper->SetScalarModeToUsePointData ();
         mapper->SetInputData (data);

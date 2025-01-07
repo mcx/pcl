@@ -267,7 +267,7 @@ pcl::VoxelGridCovariance<PointT>::applyFilter (PointCloud &output)
   if (save_leaf_layout_)
     leaf_layout_.resize (div_b_[0] * div_b_[1] * div_b_[2], -1);
 
-  // Eigen values and vectors calculated to prevent near singluar matrices
+  // Eigen values and vectors calculated to prevent near singular matrices
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eigensolver;
   Eigen::Matrix3d eigen_val;
   Eigen::Vector3d pt_sum;
@@ -289,7 +289,7 @@ pcl::VoxelGridCovariance<PointT>::applyFilter (PointCloud &output)
     leaf.mean_ /= leaf.nr_points;
 
     // If the voxel contains sufficient points, its covariance is calculated and is added to the voxel centroids and output clouds.
-    // Points with less than the minimum points will have a can not be accuratly approximated using a normal distribution.
+    // Points with less than the minimum points will have a can not be accurately approximated using a normal distribution.
     if (leaf.nr_points >= min_points_per_voxel_)
     {
       if (save_leaf_layout_)
@@ -442,11 +442,11 @@ pcl::VoxelGridCovariance<PointT>::getAllNeighborsAtPoint(const PointT& reference
 
 //////////////////////////////////////////////////////////////////////////////////////////
 template<typename PointT> void
-pcl::VoxelGridCovariance<PointT>::getDisplayCloud (pcl::PointCloud<PointXYZ>& cell_cloud)
+pcl::VoxelGridCovariance<PointT>::getDisplayCloud (pcl::PointCloud<PointXYZ>& cell_cloud, int pnt_per_cell) const
 {
   cell_cloud.clear ();
 
-  int pnt_per_cell = 1000;
+  // for now, we use random generator and normal distribution from boost instead of std because switching to std would make this function up to 2.8 times slower
   boost::mt19937 rng;
   boost::normal_distribution<> nd (0.0, 1.0);
   boost::variate_generator<boost::mt19937&, boost::normal_distribution<> > var_nor (rng, nd);
@@ -463,7 +463,7 @@ pcl::VoxelGridCovariance<PointT>::getDisplayCloud (pcl::PointCloud<PointXYZ>& ce
   // Generate points for each occupied voxel with sufficient points.
   for (auto it = leaves_.begin (); it != leaves_.end (); ++it)
   {
-    Leaf& leaf = it->second;
+    const Leaf& leaf = it->second;
 
     if (leaf.nr_points >= min_points_per_voxel_)
     {

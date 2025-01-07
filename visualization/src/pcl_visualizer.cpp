@@ -92,17 +92,18 @@
 #include <vtkEDLShading.h>
 #endif
 
+#include <pcl/common/time.h>
+#include <pcl/common/pcl_filesystem.h>
 #include <pcl/visualization/common/shapes.h>
 #include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/visualization/common/common.h>
-#include <pcl/common/time.h>
+
 #include <boost/version.hpp> // for BOOST_VERSION
 #if (BOOST_VERSION >= 106600)
 #include <boost/uuid/detail/sha1.hpp>
 #else
 #include <boost/uuid/sha1.hpp>
 #endif
-#include <boost/filesystem.hpp>
+
 #include <boost/algorithm/string.hpp> // for split
 #include <pcl/common/utils.h> // pcl::utils::ignore
 #include <pcl/console/parse.h>
@@ -182,8 +183,6 @@ pcl::visualization::details::fillCells(std::vector<int>& lookup, const std::vect
 /////////////////////////////////////////////////////////////////////////////////////////////
 pcl::visualization::PCLVisualizer::PCLVisualizer (const std::string &name, const bool create_interactor)
   : update_fps_ (vtkSmartPointer<FPSCallback>::New ())
-  , stopped_ ()
-  , timer_id_ ()
   , rens_ (vtkSmartPointer<vtkRendererCollection>::New ())
   , win_ (vtkSmartPointer<vtkRenderWindow>::New ())
   , style_ (vtkSmartPointer<pcl::visualization::PCLVisualizerInteractorStyle>::New ())
@@ -207,8 +206,6 @@ pcl::visualization::PCLVisualizer::PCLVisualizer (const std::string &name, const
 /////////////////////////////////////////////////////////////////////////////////////////////
 pcl::visualization::PCLVisualizer::PCLVisualizer (int &argc, char **argv, const std::string &name, PCLVisualizerInteractorStyle* style, const bool create_interactor)
   : update_fps_ (vtkSmartPointer<FPSCallback>::New ())
-  , stopped_ ()
-  , timer_id_ ()
   , rens_ (vtkSmartPointer<vtkRendererCollection>::New ())
   , win_ (vtkSmartPointer<vtkRenderWindow>::New ())
   , style_ (style)
@@ -239,8 +236,6 @@ pcl::visualization::PCLVisualizer::PCLVisualizer (int &argc, char **argv, const 
 pcl::visualization::PCLVisualizer::PCLVisualizer (vtkSmartPointer<vtkRenderer> ren, vtkSmartPointer<vtkRenderWindow> wind,
                                                   const std::string &name, const bool create_interactor)
   : update_fps_ (vtkSmartPointer<FPSCallback>::New ())
-  , stopped_ ()
-  , timer_id_ ()
   , rens_ (vtkSmartPointer<vtkRendererCollection>::New ())
   , win_ (wind)
   , style_ (vtkSmartPointer<pcl::visualization::PCLVisualizerInteractorStyle>::New ())
@@ -264,8 +259,6 @@ pcl::visualization::PCLVisualizer::PCLVisualizer (vtkSmartPointer<vtkRenderer> r
 pcl::visualization::PCLVisualizer::PCLVisualizer (int &argc, char **argv, vtkSmartPointer<vtkRenderer> ren, vtkSmartPointer<vtkRenderWindow> wind,
                                                   const std::string &name, PCLVisualizerInteractorStyle* style, const bool create_interactor)
   : update_fps_ (vtkSmartPointer<FPSCallback>::New ())
-  , stopped_ ()
-  , timer_id_ ()
   , rens_ (vtkSmartPointer<vtkRendererCollection>::New ())
   , win_ (wind)
   , style_ (style)
@@ -446,7 +439,6 @@ void pcl::visualization::PCLVisualizer::setupStyle ()
   style_->setCloudActorMap (cloud_actor_map_);
   style_->setShapeActorMap (shape_actor_map_);
   style_->UseTimersOn ();
-  style_->setUseVbos (use_vbos_);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -473,7 +465,7 @@ void pcl::visualization::PCLVisualizer::setupCamera (int argc, char **argv)
     std::string camera_file = getUniqueCameraFile (argc, argv);
     if (!camera_file.empty ())
     {
-      if (boost::filesystem::exists (camera_file) && style_->loadCameraParameters (camera_file))
+      if (pcl_fs::exists (camera_file) && style_->loadCameraParameters (camera_file))
       {
         camera_file_loaded_ = true;
       }
@@ -593,11 +585,24 @@ pcl::visualization::PCLVisualizer::spinOnce (int time, bool force_redraw)
 
 #if VTK_MAJOR_VERSION >= 9 && (VTK_MINOR_VERSION != 0 || VTK_BUILD_VERSION != 0) && (VTK_MINOR_VERSION != 0 || VTK_BUILD_VERSION != 1)
 // All VTK 9 versions, except 9.0.0 and 9.0.1
-  if(interactor_->IsA("vtkXRenderWindowInteractor")) {
-    DO_EVERY (1.0 / interactor_->GetDesiredUpdateRate (),
-      interactor_->ProcessEvents ();
-      std::this_thread::sleep_for (std::chrono::milliseconds (time));
-    );
+  if (interactor_->IsA("vtkXRenderWindowInteractor") || interactor_->IsA("vtkWin32RenderWindowInteractor")) {
+    const auto start_time = std::chrono::steady_clock::now();
+    const auto stop_time = start_time + std::chrono::milliseconds(time);
+
+    // Older versions of VTK 9 block for up to 1s or more on X11 when there are no events.
+    // So add a one-shot timer to guarantee an event will happen roughly by the time the user expects this function to return
+    // https://gitlab.kitware.com/vtk/vtk/-/issues/18951#note_1351387
+    interactor_->CreateOneShotTimer(time);
+
+    // Process any pending events at least once, this could take a while due to a long running render event
+    interactor_->ProcessEvents();
+
+    // Wait for the requested amount of time to have elapsed or exit immediately via GetDone being true when terminateApp is called
+    while(std::chrono::steady_clock::now() < stop_time && !interactor_->GetDone() )
+    {
+      interactor_->ProcessEvents();
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
   }
   else
 #endif
@@ -1197,7 +1202,7 @@ pcl::visualization::PCLVisualizer::createActorFromVTKDataSet (const vtkSmartPoin
     }
   }
 
-  actor->SetNumberOfCloudPoints (int (std::max<vtkIdType> (1, data->GetNumberOfPoints () / 10)));
+  actor->SetNumberOfCloudPoints (static_cast<int>(std::max<vtkIdType> (1, data->GetNumberOfPoints () / 10)));
   actor->GetProperty ()->SetInterpolationToFlat ();
 
   /// FIXME disabling backface culling due to known VTK bug: vtkTextActors are not
@@ -1527,7 +1532,7 @@ pcl::visualization::PCLVisualizer::setPointCloudRenderingProperties (
   {
     case PCL_VISUALIZER_POINT_SIZE:
     {
-      actor->GetProperty ()->SetPointSize (float (value));
+      actor->GetProperty ()->SetPointSize (static_cast<float>(value));
       actor->Modified ();
       break;
     }
@@ -1549,7 +1554,7 @@ pcl::visualization::PCLVisualizer::setPointCloudRenderingProperties (
     }
     case PCL_VISUALIZER_LINE_WIDTH:
     {
-      actor->GetProperty ()->SetLineWidth (float (value));
+      actor->GetProperty ()->SetLineWidth (static_cast<float>(value));
       actor->Modified ();
       break;
     }
@@ -1587,7 +1592,7 @@ pcl::visualization::PCLVisualizer::setPointCloudRenderingProperties (
       if (actor->GetMapper ()->GetInput ()->GetPointData ()->GetScalars ()->IsA ("vtkUnsignedCharArray"))
         break;
 
-      switch (int(value))
+      switch (static_cast<int>(value))
       {
         case PCL_VISUALIZER_LUT_RANGE_AUTO:
           double range[2];
@@ -1617,7 +1622,7 @@ pcl::visualization::PCLVisualizer::setPointCloudSelected (const bool selected, c
 
   if (am_it == cloud_actor_map_->end ())
   {
-    pcl::console::print_error ("[setPointCloudRenderingProperties] Could not find any PointCloud datasets with id <%s>!\n", id.c_str ());
+    pcl::console::print_error ("[setPointCloudSelected] Could not find any PointCloud datasets with id <%s>!\n", id.c_str ());
     return (false);
   }
   // Get the actor pointer
@@ -1754,14 +1759,14 @@ pcl::visualization::PCLVisualizer::setShapeRenderingProperties (
   }
   // Get the actor pointer
   vtkActor* actor = vtkActor::SafeDownCast (am_it->second);
-  if (!actor)
+  if (!actor && property != PCL_VISUALIZER_FONT_SIZE) // vtkTextActor is not a subclass of vtkActor
     return (false);
 
   switch (property)
   {
     case PCL_VISUALIZER_POINT_SIZE:
     {
-      actor->GetProperty ()->SetPointSize (float (value));
+      actor->GetProperty ()->SetPointSize (static_cast<float>(value));
       actor->Modified ();
       break;
     }
@@ -1773,7 +1778,7 @@ pcl::visualization::PCLVisualizer::setShapeRenderingProperties (
     }
     case PCL_VISUALIZER_LINE_WIDTH:
     {
-      actor->GetProperty ()->SetLineWidth (float (value));
+      actor->GetProperty ()->SetLineWidth (static_cast<float>(value));
       actor->Modified ();
       break;
     }
@@ -1783,13 +1788,13 @@ pcl::visualization::PCLVisualizer::setShapeRenderingProperties (
       if (!text_actor)
         return (false);
       vtkSmartPointer<vtkTextProperty> tprop = text_actor->GetTextProperty ();
-      tprop->SetFontSize (int (value));
+      tprop->SetFontSize (static_cast<int>(value));
       text_actor->Modified ();
       break;
     }
     case PCL_VISUALIZER_REPRESENTATION:
     {
-      switch (int (value))
+      switch (static_cast<int>(value))
       {
         case PCL_VISUALIZER_REPRESENTATION_POINTS:
         {
@@ -1812,7 +1817,7 @@ pcl::visualization::PCLVisualizer::setShapeRenderingProperties (
     }
     case PCL_VISUALIZER_SHADING:
     {
-      switch (int (value))
+      switch (static_cast<int>(value))
       {
         case PCL_VISUALIZER_SHADING_FLAT:
         {
@@ -1881,7 +1886,7 @@ pcl::visualization::PCLVisualizer::setShapeRenderingProperties (
       if (actor->GetMapper ()->GetInput ()->GetPointData ()->GetScalars ()->IsA ("vtkUnsignedCharArray"))
         break;
 
-      switch (int(value))
+      switch (static_cast<int>(value))
       {
         case PCL_VISUALIZER_LUT_RANGE_AUTO:
           double range[2];
@@ -2174,7 +2179,7 @@ void
 pcl::visualization::PCLVisualizer::resetCameraViewpoint (const std::string &id)
 {
   vtkSmartPointer<vtkMatrix4x4> camera_pose;
-  const CloudActorMap::iterator it = cloud_actor_map_->find(id);
+  const auto it = cloud_actor_map_->find(id);
   if (it != cloud_actor_map_->end ())
     camera_pose = it->second.viewpoint_transformation_;
   else
@@ -2948,9 +2953,9 @@ pcl::visualization::PCLVisualizer::updateColorHandlerIndex (const std::string &i
   }
 
   std::size_t color_handler_size = am_it->second.color_handlers.size ();
-  if (!(std::size_t (index) < color_handler_size))
+  if (!(static_cast<std::size_t>(index) < color_handler_size))
   {
-    pcl::console::print_warn (stderr, "[updateColorHandlerIndex] Invalid index <%d> given! Index must be less than %d.\n", index, int (color_handler_size));
+    pcl::console::print_warn (stderr, "[updateColorHandlerIndex] Invalid index <%d> given! Index must be less than %d.\n", index, static_cast<int>(color_handler_size));
     return (false);
   }
   // Get the handler
@@ -2963,7 +2968,7 @@ pcl::visualization::PCLVisualizer::updateColorHandlerIndex (const std::string &i
   auto *data = dynamic_cast<vtkPolyData*>(am_it->second.actor->GetMapper ()->GetInput ());
   data->GetPointData ()->SetScalars (scalars);
   // Modify the mapper
-  auto* mapper = dynamic_cast<vtkPolyDataMapper*>(am_it->second.actor->GetMapper ());
+  auto* mapper = dynamic_cast<vtkDataSetMapper*>(am_it->second.actor->GetMapper ());
   mapper->SetScalarRange (minmax);
   mapper->SetScalarModeToUsePointData ();
   mapper->SetInputData (data);
@@ -3120,7 +3125,7 @@ pcl::visualization::PCLVisualizer::updatePolygonMesh (
   std::vector<pcl::Vertices> verts (poly_mesh.polygons); // copy vector
 
   // Get the current poly data
-  vtkSmartPointer<vtkPolyData> polydata = dynamic_cast<vtkPolyDataMapper*>(am_it->second.actor->GetMapper ())->GetInput ();
+  vtkSmartPointer<vtkPolyData> polydata = dynamic_cast<vtkPolyData*>(am_it->second.actor->GetMapper ()->GetInput ());
   if (!polydata)
     return (false);
   vtkSmartPointer<vtkCellArray> cells = polydata->GetStrips ();
@@ -3373,7 +3378,7 @@ pcl::visualization::PCLVisualizer::addTextureMesh (const pcl::TextureMesh &mesh,
     return (false);
   // hardware always supports multitexturing of some degree
   int texture_units = tex_manager->GetNumberOfTextureUnits ();
-  if ((std::size_t) texture_units < mesh.tex_materials.size ())
+  if (static_cast<std::size_t>(texture_units) < mesh.tex_materials.size ())
     PCL_WARN ("[PCLVisualizer::addTextureMesh] GPU texture units %d < mesh textures %d!\n",
               texture_units, mesh.tex_materials.size ());
   // Load textures
@@ -3650,7 +3655,7 @@ pcl::visualization::PCLVisualizer::renderViewTesselatedSphere (
       sphere->GetPoint (ptIds_com[1], p2_com);
       sphere->GetPoint (ptIds_com[2], p3_com);
       vtkTriangle::TriangleCenter (p1_com, p2_com, p3_com, center);
-      cam_positions[i] = Eigen::Vector3f (float (center[0]), float (center[1]), float (center[2]));
+      cam_positions[i] = Eigen::Vector3f (static_cast<float>(center[0]), static_cast<float>(center[1]), static_cast<float>(center[2]));
       cam_positions[i].normalize ();
       i++;
     }
@@ -3663,7 +3668,7 @@ pcl::visualization::PCLVisualizer::renderViewTesselatedSphere (
     {
       double cam_pos[3];
       sphere->GetPoint (i, cam_pos);
-      cam_positions[i] = Eigen::Vector3f (float (cam_pos[0]), float (cam_pos[1]), float (cam_pos[2]));
+      cam_positions[i] = Eigen::Vector3f (static_cast<float>(cam_pos[0]), static_cast<float>(cam_pos[1]), static_cast<float>(cam_pos[2]));
       cam_positions[i].normalize ();
     }
   }
@@ -3901,7 +3906,7 @@ pcl::visualization::PCLVisualizer::renderViewTesselatedSphere (
         trans_view (x, y) = static_cast<float> (view_transform->GetElement (x, y));
 
     //NOTE: vtk view coordinate system is different than the standard camera coordinates (z forward, y down, x right)
-    //thus, the fliping in y and z
+    //thus, the flipping in y and z
     for (auto &point : cloud->points)
     {
       point.getVector4fMap () = trans_view * point.getVector4fMap ();
@@ -3923,7 +3928,7 @@ pcl::visualization::PCLVisualizer::renderViewTesselatedSphere (
     transOCtoCC->Concatenate (cam_tmp->GetViewTransformMatrix ());
 
     //NOTE: vtk view coordinate system is different than the standard camera coordinates (z forward, y down, x right)
-    //thus, the fliping in y and z
+    //thus, the flipping in y and z
     vtkSmartPointer<vtkMatrix4x4> cameraSTD = vtkSmartPointer<vtkMatrix4x4>::New ();
     cameraSTD->Identity ();
     cameraSTD->SetElement (0, 0, 1);
@@ -3958,8 +3963,8 @@ pcl::visualization::PCLVisualizer::renderView (int xres, int yres, pcl::PointClo
   win_->SetSize (xres, yres);
   win_->Render ();
 
-  float dwidth = 2.0f / float (xres),
-        dheight = 2.0f / float (yres);
+  float dwidth = 2.0f / static_cast<float>(xres),
+        dheight = 2.0f / static_cast<float>(yres);
 
   cloud->points.resize (xres * yres);
   cloud->width = xres;
@@ -3997,15 +4002,15 @@ pcl::visualization::PCLVisualizer::renderView (int xres, int yres, pcl::PointClo
         continue;
       }
 
-      Eigen::Vector4f world_coords (dwidth  * float (x) - 1.0f,
-                                    dheight * float (y) - 1.0f,
+      Eigen::Vector4f world_coords (dwidth  * static_cast<float>(x) - 1.0f,
+                                    dheight * static_cast<float>(y) - 1.0f,
                                     depth[ptr],
                                     1.0f);
       world_coords = mat2 * mat1 * world_coords;
 
       float w3 = 1.0f / world_coords[3];
       world_coords[0] *= w3;
-      // vtk view coordinate system is different than the standard camera coordinates (z forward, y down, x right), thus, the fliping in y and z
+      // vtk view coordinate system is different than the standard camera coordinates (z forward, y down, x right), thus, the flipping in y and z
       world_coords[1] *= -w3;
       world_coords[2] *= -w3;
 
@@ -4156,8 +4161,8 @@ pcl::visualization::PCLVisualizer::getTransformationMatrix (
     Eigen::Matrix4f &transformation)
 {
   transformation.setIdentity ();
-  transformation.block<3, 3> (0, 0) = orientation.toRotationMatrix ();
-  transformation.block<3, 1> (0, 3) = origin.head (3);
+  transformation.topLeftCorner<3, 3> () = orientation.toRotationMatrix ();
+  transformation.block<3, 1> (0, 3) = origin.head<3> ();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -4353,7 +4358,7 @@ int
 pcl::visualization::PCLVisualizer::getGeometryHandlerIndex (const std::string &id)
 {
   auto am_it = style_->getCloudActorMap ()->find (id);
-  if (am_it != cloud_actor_map_->end ())
+  if (am_it == cloud_actor_map_->end ())
     return (-1);
 
   return (am_it->second.geometry_handler_index_);
@@ -4446,39 +4451,39 @@ pcl::visualization::PCLVisualizer::textureFromTexMaterial (const pcl::TexMateria
     return (-1);
   }
 
-  boost::filesystem::path full_path (tex_mat.tex_file.c_str ());
-  if (!boost::filesystem::exists (full_path))
+  pcl_fs::path full_path (tex_mat.tex_file.c_str ());
+  if (!pcl_fs::exists (full_path))
   {
-    boost::filesystem::path parent_dir = full_path.parent_path ();
+    pcl_fs::path parent_dir = full_path.parent_path ();
     std::string upper_filename = tex_mat.tex_file;
     boost::to_upper (upper_filename);
     std::string real_name;
 
     try
     {
-      if (!boost::filesystem::exists (parent_dir))
+      if (!pcl_fs::exists (parent_dir))
       {
         PCL_WARN ("[PCLVisualizer::textureFromTexMaterial] Parent directory '%s' doesn't exist!\n",
                    parent_dir.string ().c_str ());
         return (-1);
       }
 
-      if (!boost::filesystem::is_directory (parent_dir))
+      if (!pcl_fs::is_directory (parent_dir))
       {
         PCL_WARN ("[PCLVisualizer::textureFromTexMaterial] Parent '%s' is not a directory !\n",
                    parent_dir.string ().c_str ());
         return (-1);
       }
 
-      using paths_vector = std::vector<boost::filesystem::path>;
+      using paths_vector = std::vector<pcl_fs::path>;
       paths_vector paths;
-      std::copy (boost::filesystem::directory_iterator (parent_dir),
-                 boost::filesystem::directory_iterator (),
+      std::copy (pcl_fs::directory_iterator (parent_dir),
+                 pcl_fs::directory_iterator (),
                  back_inserter (paths));
 
       for (const auto& path : paths)
       {
-        if (boost::filesystem::is_regular_file (path))
+        if (pcl_fs::is_regular_file (path))
         {
           std::string name = path.string ();
           boost::to_upper (name);
@@ -4497,7 +4502,7 @@ pcl::visualization::PCLVisualizer::textureFromTexMaterial (const pcl::TexMateria
         return (-1);
       }
     }
-    catch (const boost::filesystem::filesystem_error& ex)
+    catch (const pcl_fs::filesystem_error& ex)
     {
 
       PCL_WARN ("[PCLVisualizer::textureFromTexMaterial] Error %s when looking for file %s\n!",
@@ -4572,10 +4577,10 @@ pcl::visualization::PCLVisualizer::getUniqueCameraFile (int argc, char **argv)
     // Calculate sha1 using canonical paths
     for (const int &p_file_index : p_file_indices)
     {
-      boost::filesystem::path path (argv[p_file_index]);
-      if (boost::filesystem::exists (path))
+      pcl_fs::path path (argv[p_file_index]);
+      if (pcl_fs::exists (path))
       {
-        path = boost::filesystem::canonical (path);
+        path = pcl_fs::canonical (path);
         const auto pathStr = path.string ();
         sha1.process_bytes (pathStr.c_str(), pathStr.size());
         valid = true;
@@ -4585,10 +4590,12 @@ pcl::visualization::PCLVisualizer::getUniqueCameraFile (int argc, char **argv)
     // Build camera filename
     if (valid)
     {
-      unsigned int digest[5];
+      boost::uuids::detail::sha1::digest_type digest;
       sha1.get_digest (digest);
       sstream << ".";
-      sstream << std::hex << digest[0] << digest[1] << digest[2] << digest[3] << digest[4];
+      for (int i = 0; i < static_cast<int>(sizeof(digest)/sizeof(unsigned int)); ++i) {
+        sstream << std::hex << *(reinterpret_cast<unsigned int*>(&digest[0]) + i);
+      }
       sstream << ".cam";
     }
   }

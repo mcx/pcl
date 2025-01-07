@@ -349,7 +349,7 @@ pcl::CrfSegmentation<PointT>::createUnaryPotentials (std::vector<float> &unary,
       }
     }
   
-    // set the engeries for the labels
+    // set the energies for the labels
     std::size_t u_idx = k * n_labels;
     if (label > 0)
     {
@@ -595,6 +595,6 @@ pcl::CrfSegmentation<PointT>::segmentPoints (pcl::PointCloud<pcl::PointXYZRGBL> 
 
 }
 
-#define PCL_INSTANTIATE_CrfSegmentation(T) template class pcl::CrfSegmentation<T>;
+#define PCL_INSTANTIATE_CrfSegmentation(T) template class PCL_EXPORTS pcl::CrfSegmentation<T>;
 
 #endif    // PCL_CRF_SEGMENTATION_HPP_

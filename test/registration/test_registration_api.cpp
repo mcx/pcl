@@ -88,7 +88,7 @@ TEST (PCL, CorrespondenceEstimation)
 
   // check for correct order and number of matches
   EXPECT_EQ (int (correspondences->size ()), nr_original_correspondences);
-  if (int (correspondences->size ()) == nr_original_correspondences)
+  if (static_cast<int>(correspondences->size ()) == nr_original_correspondences)
   {
     for (int i = 0; i < nr_original_correspondences; ++i)
     {
@@ -112,7 +112,7 @@ TEST (PCL, CorrespondenceEstimationReciprocal)
 
   // check for correct matches and number of matches
   EXPECT_EQ (int (correspondences->size ()), nr_reciprocal_correspondences);
-  if (int (correspondences->size ()) == nr_reciprocal_correspondences)
+  if (static_cast<int>(correspondences->size ()) == nr_reciprocal_correspondences)
   {
     for (int i = 0; i < nr_reciprocal_correspondences; ++i)
     {
@@ -143,7 +143,7 @@ TEST (PCL, CorrespondenceRejectorDistance)
 
   // check for correct matches and number of matches
   EXPECT_EQ (int (correspondences_result_rej_dist->size ()), nr_correspondences_result_rej_dist);
-  if (int (correspondences_result_rej_dist->size ()) == nr_correspondences_result_rej_dist)
+  if (static_cast<int>(correspondences_result_rej_dist->size ()) == nr_correspondences_result_rej_dist)
   {
     for (int i = 0; i < nr_correspondences_result_rej_dist; ++i)
     {
@@ -176,7 +176,7 @@ TEST (PCL, CorrespondenceRejectorMedianDistance)
   // check for correct matches
   EXPECT_NEAR (corr_rej_median_dist.getMedianDistance (), rej_median_distance, 1e-4);
   EXPECT_EQ (int (correspondences_result_rej_median_dist->size ()), nr_correspondences_result_rej_median_dist);
-  if (int (correspondences_result_rej_median_dist->size ()) == nr_correspondences_result_rej_median_dist)
+  if (static_cast<int>(correspondences_result_rej_median_dist->size ()) == nr_correspondences_result_rej_median_dist)
   {
     for (int i = 0; i < nr_correspondences_result_rej_median_dist; ++i)
     {
@@ -206,7 +206,7 @@ TEST (PCL, CorrespondenceRejectorOneToOne)
 
   // check for correct matches and number of matches
   EXPECT_EQ (int (correspondences_result_rej_one_to_one->size ()), nr_correspondences_result_rej_one_to_one);
-  if (int (correspondences_result_rej_one_to_one->size ()) == nr_correspondences_result_rej_one_to_one)
+  if (static_cast<int>(correspondences_result_rej_one_to_one->size ()) == nr_correspondences_result_rej_one_to_one)
   {
     for (int i = 0; i < nr_correspondences_result_rej_one_to_one; ++i)
     {
@@ -242,7 +242,7 @@ TEST (PCL, CorrespondenceRejectorSampleConsensus)
 
   // check for correct matches and number of matches
   EXPECT_EQ (int (correspondences_result_rej_sac->size ()), nr_correspondences_result_rej_sac);
-  if (int (correspondences_result_rej_sac->size ()) == nr_correspondences_result_rej_sac)
+  if (static_cast<int>(correspondences_result_rej_sac->size ()) == nr_correspondences_result_rej_sac)
   {
     for (int i = 0; i < nr_correspondences_result_rej_sac; ++i)
     {
@@ -302,7 +302,7 @@ TEST (PCL, CorrespondenceRejectorSurfaceNormal)
   corr_rej_surf_norm.getCorrespondences (*correspondences_result_rej_surf_norm);
 
   // check for correct matches
-  if (int (correspondences_result_rej_surf_norm->size ()) == nr_correspondences_result_rej_dist)
+  if (static_cast<int>(correspondences_result_rej_surf_norm->size ()) == nr_correspondences_result_rej_dist)
   {
     for (int i = 0; i < nr_correspondences_result_rej_dist; ++i)
     {
@@ -332,7 +332,7 @@ TEST (PCL, CorrespondenceRejectorTrimmed)
 
   // check for correct matches, number of matches, and for sorting (correspondences should be sorted w.r.t. distance)
   EXPECT_EQ (int (correspondences_result_rej_trimmed->size ()), nr_correspondences_result_rej_trimmed);
-  if (int (correspondences_result_rej_trimmed->size ()) == nr_correspondences_result_rej_trimmed)
+  if (static_cast<int>(correspondences_result_rej_trimmed->size ()) == nr_correspondences_result_rej_trimmed)
   {
     for (int i = 0; i < nr_correspondences_result_rej_trimmed; ++i)
     {
@@ -364,7 +364,7 @@ TEST (PCL, CorrespondenceRejectorVarTrimmed)
   corr_rej_var_trimmed_dist.getCorrespondences(*correspondences_result_rej_var_trimmed_dist);
 
   // check for correct matches
-  if (int (correspondences_result_rej_var_trimmed_dist->size ()) == nr_correspondences_result_rej_dist)
+  if (static_cast<int>(correspondences_result_rej_var_trimmed_dist->size ()) == nr_correspondences_result_rej_dist)
   {
     for (int i = 0; i < nr_correspondences_result_rej_dist; ++i)
     {
@@ -401,7 +401,7 @@ TEST (PCL, TransformationEstimationSVD)
   // Check if the estimation with correspondences gives the same results
   Eigen::Matrix4f T_SVD_2;
   pcl::Correspondences corr; corr.reserve (source->size ());
-  for (std::size_t i=0; i<source->size (); ++i) corr.push_back (pcl::Correspondence (i, i, 0.f));
+  for (std::size_t i=0; i<source->size (); ++i) corr.emplace_back(i, i, 0.f);
   trans_est_svd.estimateRigidTransformation(*source, *target, corr, T_SVD_2);
 
   const Eigen::Quaternionf   R_SVD_2 (T_SVD_2.topLeftCorner  <3, 3> ());
@@ -444,7 +444,7 @@ TEST (PCL, TransformationEstimationDualQuaternion)
   // Check if the estimation with correspondences gives the same results
   Eigen::Matrix4f T_DQ_2;
   pcl::Correspondences corr; corr.reserve (source->size ());
-  for (std::size_t i=0; i<source->size (); ++i) corr.push_back (pcl::Correspondence (i, i, 0.f));
+  for (std::size_t i=0; i<source->size (); ++i) corr.emplace_back(i, i, 0.f);
   trans_est_dual_quaternion.estimateRigidTransformation(*source, *target, corr, T_DQ_2);
 
   const Eigen::Quaternionf   R_DQ_2 (T_DQ_2.topLeftCorner  <3, 3> ());
@@ -540,7 +540,7 @@ TEST (PCL, TransformationEstimationLM)
   pcl::Correspondences corr;
   corr.reserve (source->size ());
   for (std::size_t i = 0; i < source->size (); ++i)
-    corr.push_back (pcl::Correspondence (i, i, 0.f));
+    corr.emplace_back(i, i, 0.f);
   trans_est_lm_float.estimateRigidTransformation (*source, *target, corr, T_LM_2_float);
 
   const Eigen::Quaternionf   R_LM_2_float (T_LM_2_float.topLeftCorner  <3, 3> ());
@@ -578,7 +578,7 @@ TEST (PCL, TransformationEstimationLM)
   corr.clear ();
   corr.reserve (source->size ());
   for (std::size_t i = 0; i < source->size (); ++i)
-    corr.push_back (pcl::Correspondence (i, i, 0.f));
+    corr.emplace_back(i, i, 0.f);
   trans_est_lm_double.estimateRigidTransformation (*source, *target, corr, T_LM_2_double);
 
   const Eigen::Quaterniond   R_LM_2_double (T_LM_2_double.topLeftCorner  <3, 3> ());
@@ -733,7 +733,7 @@ main (int argc, char** argv)
   testing::InitGoogleTest (&argc, argv);
   return (RUN_ALL_TESTS ());
 
-  // Tranpose the cloud_model
+  // Transpose the cloud_model
   /*for (std::size_t i = 0; i < cloud_model.size (); ++i)
   {
   //  cloud_model[i].z += 1;

@@ -56,7 +56,7 @@ pcl::StatisticalOutlierRemoval<pcl::PCLPointCloud2>::applyFilter (PCLPointCloud2
 
   if (std_mul_ == 0.0)
   {
-    PCL_ERROR ("[pcl::%s::applyFilter] Standard deviation multipler not set!\n", getClassName ().c_str ());
+    PCL_ERROR ("[pcl::%s::applyFilter] Standard deviation multiplier not set!\n", getClassName ().c_str ());
     output.width = output.height = 0;
     output.data.clear ();
     return;
@@ -147,7 +147,7 @@ pcl::StatisticalOutlierRemoval<pcl::PCLPointCloud2>::applyFilter (Indices& indic
 
   if (std_mul_ == 0.0)
   {
-    PCL_ERROR ("[pcl::%s::applyFilter] Standard deviation multipler not set!\n", getClassName ().c_str ());
+    PCL_ERROR ("[pcl::%s::applyFilter] Standard deviation multiplier not set!\n", getClassName ().c_str ());
     indices.clear();
     return;
   }
@@ -227,11 +227,11 @@ pcl::StatisticalOutlierRemoval<pcl::PCLPointCloud2>::generateStatistics (double&
       continue;
     }
 
-    // Minimum distance (if mean_k_ == 2) or mean distance
-    double dist_sum = 0;
-    for (int j = 1; j < mean_k_; ++j)
-      dist_sum += sqrt (nn_dists[j]);
-    distances[cp] = static_cast<float> (dist_sum / (mean_k_ - 1));
+    // Calculate the mean distance to its neighbors.
+    double dist_sum = 0.0;
+    for (std::size_t k = 1; k < nn_dists.size(); ++k) // k = 0 is the query point
+      dist_sum += sqrt(nn_dists[k]);
+    distances[cp] = static_cast<float>(dist_sum / (nn_dists.size() - 1));
     valid_distances++;
   }
 

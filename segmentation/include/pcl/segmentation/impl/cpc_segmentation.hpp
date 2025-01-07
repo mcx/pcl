@@ -42,15 +42,7 @@
 #include <pcl/segmentation/cpc_segmentation.h>
 
 template <typename PointT>
-pcl::CPCSegmentation<PointT>::CPCSegmentation () :
-    max_cuts_ (20),
-    min_segment_size_for_cutting_ (400),
-    min_cut_score_ (0.16),
-    use_local_constrains_ (true),
-    use_directed_weights_ (true),
-    ransac_itrs_ (10000)
-{
-}
+pcl::CPCSegmentation<PointT>::CPCSegmentation () = default;
 
 template <typename PointT>
 pcl::CPCSegmentation<PointT>::~CPCSegmentation () = default;
@@ -199,7 +191,6 @@ pcl::CPCSegmentation<PointT>::applyCuttingPlane (std::uint32_t depth_levels_left
       for (const auto &cluster_index : cluster_indices)
       {
         // get centroids of vertices        
-        int cluster_concave_pts = 0;
         float cluster_score = 0;
 //         std::cout << "Cluster has " << cluster_indices[cc].indices.size () << " points" << std::endl;
         for (const auto &current_index : cluster_index.indices)
@@ -208,8 +199,6 @@ pcl::CPCSegmentation<PointT>::applyCuttingPlane (std::uint32_t depth_levels_left
           if (use_directed_weights_)
             index_score *= 1.414 * (std::abs (plane_normal.dot (edge_cloud_cluster->at (current_index).getNormalVector3fMap ())));
           cluster_score += index_score;
-          if (weights[current_index] > 0)
-            ++cluster_concave_pts;
         }
         // check if the score is below the threshold. If that is the case this segment should not be split
         cluster_score /= cluster_index.indices.size ();

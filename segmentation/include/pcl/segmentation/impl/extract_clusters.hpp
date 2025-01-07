@@ -106,9 +106,8 @@ pcl::extractEuclideanClusters (const PointCloud<PointT> &cloud,
       for (std::size_t j = 0; j < seed_queue.size (); ++j)
         r.indices[j] = seed_queue[j];
 
-      // These two lines should not be needed: (can anyone confirm?) -FF
+      // After clustering, indices are out of order, so sort them
       std::sort (r.indices.begin (), r.indices.end ());
-      r.indices.erase (std::unique (r.indices.begin (), r.indices.end ()), r.indices.end ());
 
       r.header = cloud.header;
       clusters.push_back (r);   // We could avoid a copy by working directly in the vector
@@ -122,7 +121,6 @@ pcl::extractEuclideanClusters (const PointCloud<PointT> &cloud,
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////
-/** @todo: fix the return value, make sure the exit is not needed anymore*/
 template <typename PointT> void
 pcl::extractEuclideanClusters (const PointCloud<PointT> &cloud,
                                const Indices &indices,
@@ -174,7 +172,7 @@ pcl::extractEuclideanClusters (const PointCloud<PointT> &cloud,
       if( ret == -1)
       {
         PCL_ERROR("[pcl::extractEuclideanClusters] Received error code -1 from radiusSearch\n");
-        exit(0);
+        return;
       }
       if (!ret)
       {
@@ -204,10 +202,8 @@ pcl::extractEuclideanClusters (const PointCloud<PointT> &cloud,
         // This is the only place where indices come into play
         r.indices[j] = seed_queue[j];
 
-      // These two lines should not be needed: (can anyone confirm?) -FF
-      //r.indices.assign(seed_queue.begin(), seed_queue.end());
+      // After clustering, indices are out of order, so sort them
       std::sort (r.indices.begin (), r.indices.end ());
-      r.indices.erase (std::unique (r.indices.begin (), r.indices.end ()), r.indices.end ());
 
       r.header = cloud.header;
       clusters.push_back (r);   // We could avoid a copy by working directly in the vector

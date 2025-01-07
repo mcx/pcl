@@ -169,7 +169,7 @@ namespace pcl
     * \author Patrick Mihelich, Radu B. Rusu
     */
   template <typename PointT>
-  class PCL_EXPORTS PointCloud
+  class PointCloud
   {
     public:
       /** \brief Default constructor. Sets \ref is_dense to true, \ref width
@@ -204,7 +204,7 @@ namespace pcl
         , height (height_)
       {}
 
-      //TODO: check if copy/move contructors/assignment operators are needed
+      //TODO: check if copy/move constructors/assignment operators are needed
 
       /** \brief Add a point cloud to the current cloud.
         * \param[in] rhs the cloud to add to the current cloud
@@ -921,5 +921,3 @@ namespace pcl
     return (s);
   }
 }
-
-#define PCL_INSTANTIATE_PointCloud(T) template class PCL_EXPORTS pcl::PointCloud<T>;

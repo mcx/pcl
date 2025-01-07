@@ -38,6 +38,7 @@
  */
 
 #include <pcl/io/image_grabber.h>
+#include <pcl/common/pcl_filesystem.h>
 #include <pcl/console/parse.h>
 #include <pcl/console/print.h>
 #include <pcl/visualization/cloud_viewer.h>
@@ -45,7 +46,6 @@
 
 #include <mutex>
 #include <thread>
-#include <boost/filesystem.hpp> // for exists
 
 using namespace std::chrono_literals;
 using pcl::console::print_error;
@@ -129,7 +129,7 @@ mouse_callback (const pcl::visualization::MouseEvent& mouse_event, void* cookie)
 int
 main (int argc, char** argv)
 {
-  srand (unsigned (time (nullptr)));
+  srand (static_cast<unsigned>(time (nullptr)));
 
   if (argc > 1)
   {
@@ -197,7 +197,7 @@ main (int argc, char** argv)
   std::string path;
   pcl::console::parse_argument (argc, argv, "-dir", path);
   std::cout << "path: " << path << std::endl;
-  if (!path.empty() && boost::filesystem::exists (path))
+  if (!path.empty() && pcl_fs::exists (path))
   {
     grabber.reset (new pcl::ImageGrabber<pcl::PointXYZRGBA> (path, frames_per_second, repeat, use_pclzf));
   }
@@ -207,7 +207,7 @@ main (int argc, char** argv)
     printHelp (argc, argv);
     return (-1);
   }
-  grabber->setDepthImageUnits (float (1E-3));
+  grabber->setDepthImageUnits (static_cast<float>(1E-3));
 
   // Before manually setting
   double fx, fy, cx, cy;

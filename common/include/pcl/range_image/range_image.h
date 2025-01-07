@@ -71,7 +71,7 @@ namespace pcl
       /** Constructor */
       PCL_EXPORTS RangeImage ();
       /** Destructor */
-      PCL_EXPORTS virtual ~RangeImage () = default;
+      PCL_EXPORTS virtual ~RangeImage ();
 
       // =====STATIC VARIABLES=====
       /** The maximum number of openmp threads that can be used in this class */
@@ -397,7 +397,7 @@ namespace pcl
       inline PointWithRange&
       getPoint (float image_x, float image_y);
 
-      /** \brief Return the 3D point with range at the given image position.  This methd performs no error checking
+      /** \brief Return the 3D point with range at the given image position.  This method performs no error checking
         * to make sure the specified image position is inside of the image!
         * \param image_x the x coordinate
         * \param image_y the y coordinate
@@ -590,13 +590,13 @@ namespace pcl
       getAcutenessValueImages (int pixel_distance, float*& acuteness_value_image_x,
                                float*& acuteness_value_image_y) const;
 
-      /** Calculates, how much the surface changes at a point. Pi meaning a flat suface and 0.0f
+      /** Calculates, how much the surface changes at a point. Pi meaning a flat surface and 0.0f
        *  would be a needle point */
       //inline float
       //  getSurfaceChange (const PointWithRange& point, const PointWithRange& neighbor1,
       //                   const PointWithRange& neighbor2) const;
 
-      /** Calculates, how much the surface changes at a point. 1 meaning a 90deg angle and 0 a flat suface */
+      /** Calculates, how much the surface changes at a point. 1 meaning a 90deg angle and 0 a flat surface */
       PCL_EXPORTS float
       getSurfaceChange (int x, int y, int radius) const;
 
@@ -767,13 +767,13 @@ namespace pcl
       // =====PROTECTED MEMBER VARIABLES=====
       Eigen::Affine3f to_range_image_system_;  /**< Inverse of to_world_system_ */
       Eigen::Affine3f to_world_system_;        /**< Inverse of to_range_image_system_ */
-      float angular_resolution_x_;             /**< Angular resolution of the range image in x direction in radians per pixel */
-      float angular_resolution_y_;             /**< Angular resolution of the range image in y direction in radians per pixel */
-      float angular_resolution_x_reciprocal_;  /**< 1.0/angular_resolution_x_ - provided for better performance of
+      float angular_resolution_x_{0.0f};             /**< Angular resolution of the range image in x direction in radians per pixel */
+      float angular_resolution_y_{0.0f};             /**< Angular resolution of the range image in y direction in radians per pixel */
+      float angular_resolution_x_reciprocal_{0.0f};  /**< 1.0/angular_resolution_x_ - provided for better performance of
                                                 *   multiplication compared to division */
-      float angular_resolution_y_reciprocal_;  /**< 1.0/angular_resolution_y_ - provided for better performance of
+      float angular_resolution_y_reciprocal_{0.0f};  /**< 1.0/angular_resolution_y_ - provided for better performance of
                                                 *   multiplication compared to division */
-      int image_offset_x_, image_offset_y_;    /**< Position of the top left corner of the range image compared to
+      int image_offset_x_{0}, image_offset_y_{0};    /**< Position of the top left corner of the range image compared to
                                                 *   an image of full size (360x180 degrees) */
       PointWithRange unobserved_point;         /**< This point is used to be able to return
                                                 *   a reference to a non-existing point */
@@ -782,10 +782,10 @@ namespace pcl
 
 
       // =====STATIC PROTECTED=====
-      static const int lookup_table_size;
-      static std::vector<float> asin_lookup_table;
-      static std::vector<float> atan_lookup_table;
-      static std::vector<float> cos_lookup_table;
+      PCL_EXPORTS static const int lookup_table_size;
+      PCL_EXPORTS static std::vector<float> asin_lookup_table;
+      PCL_EXPORTS static std::vector<float> atan_lookup_table;
+      PCL_EXPORTS static std::vector<float> cos_lookup_table;
       /** Create lookup tables for trigonometric functions */
       static void
       createLookupTables ();
